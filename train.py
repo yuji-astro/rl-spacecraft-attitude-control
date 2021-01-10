@@ -26,9 +26,15 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     critic_lr = critic_lr
     actor_lr = actor_lr
 
-    agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
-    # curr_dir = os.path.abspath(os.getcwd())
-    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    # agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
+    curr_dir = os.path.abspath(os.getcwd())
+    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # agent.critic.to(device)
+    # agent.critic_target.to(device)
+    # agent.actor.to(device)
+    # agent.actor_target.to(device)
+    
     print(agent)
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
@@ -75,8 +81,9 @@ def evaluate():
         qe=np.append(qe,next_error_state[0].reshape(1,-1),axis=0)
         w=np.append(w,next_error_state[2].reshape(1,-1),axis=0)
         r += reward
+        actions = np.append(actions, action.reshape(1,-1),axis=0)
 
-        state = next_state
+        state = next_error_state
 
     env.close()
     #-------------------------------結果のプロット----------------------------------
@@ -139,9 +146,9 @@ def evaluate():
     plt.savefig(curr_dir + "/results/plot_ang_vel.png")
 
     plt.figure(figsize=(5.0,3.5),dpi=100)
-    plt.plot(np.arange(simulation_iterations)*dt, actions[:,0],label = r"$\tau_{x}$")
-    plt.plot(np.arange(simulation_iterations)*dt, actions[:,1],label = r"$\tau_{x}$")
-    plt.plot(np.arange(simulation_iterations)*dt, actions[:,2],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,0],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,1],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,2],label = r"$\tau_{x}$")
     plt.title('Action')
     plt.ylabel('Input torque [Nm]')
     plt.xlabel(r'time [s]')

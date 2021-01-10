@@ -26,10 +26,10 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     critic_lr = critic_lr
     actor_lr = actor_lr
 
-    # agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
+    agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
     curr_dir = os.path.abspath(os.getcwd())
-    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # agent.critic.to(device)
     # agent.critic_target.to(device)
     # agent.actor.to(device)
@@ -268,6 +268,12 @@ def env_test():
 
 if __name__ == '__main__':
     plt.close()
-    # evaluate()
-    train()
-    # env_test()
+    val = input('Enter the number 1:train 2:evaluate 3:env_test  > ')
+    if val == '1':
+        train()
+    elif val == '2':
+        evaluate()
+    elif val == '3':
+        env_test()
+    else:
+        print("You entered the wrong number, run again and choose from 1 or 2 or 3.")

@@ -311,6 +311,18 @@ class SatelliteContinuousEnv(gym.Env):
 
         self.errorQuate = self.error_Q@self.startQuate
 
+        #エラークオータニオンマトリックス
+        er1 = self.goalQuate[0]
+        er2 = self.goalQuate[1]
+        er3 = self.goalQuate[2]
+        er4 = self.goalQuate[3]
+        self.error_Q = np.array([[er1, er2, er3, er4],
+                                [-er2, er1, er4, -er3],
+                                [-er3, -er4, er1, er2],
+                                [-er4, er3, -er2, er1]])
+        
+        self.errorQuate = self.error_Q@self.startQuate
+
         #エラークオータニオンの微分
         self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
         self.pre_state = np.hstack((self.startQuate,self.startOmega))

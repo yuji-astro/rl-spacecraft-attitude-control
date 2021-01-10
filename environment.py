@@ -11,43 +11,202 @@ from gym.utils import seeding
 logger = logging.getLogger(__name__)
 
 
-class CartPoleSwingUpContinuousEnv(gym.Env):
+class SatelliteContinuousEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
     }
+    #----------toolbox----------
+    def skew(self,vec): 
+        # create a skew symmetric matrix from a vector
+        mat = np.array([[0, -vec[2], vec[1]],
+                        [vec[2], 0, -vec[0]],
+                        [-vec[1], vec[0], 0]])
+        return mat
+
+    def euler2dcm(self,euler):
+        phi   = euler[2] # Z axis Yaw
+        theta = euler[1] # Y axis Pitch
+        psi   = euler[0] # X axis Roll
+        rotx = np.array([[1, 0, 0],
+                        [0, np.cos(psi), np.sin(psi)],
+                        [0, -np.sin(psi), np.cos(psi)]])
+        roty = np.array([[np.cos(theta), 0, -np.sin(theta)],
+                        [0, 1, 0],
+                        [np.sin(theta), 0, np.cos(theta)]])
+        rotz = np.array([[np.cos(phi), np.sin(phi), 0],
+                        [-np.sin(phi), np.cos(phi), 0],
+                        [0, 0, 1]])
+        dcm = rotx @ roty @ rotz
+        return dcm
+
+    def dcm2euler(self,dcm):
+        # calculate 321 Euler angles [rad] from DCM
+        sin_theta = - dcm[0,2]
+        if sin_theta == 1 or sin_theta == -1:
+            theta = np.arcsin(sin_theta)
+            psi = 0
+            sin_phi = -dcm(2,1)
+            phi = np.arcsin(sin_phi)
+        else:
+            theta = np.arcsin(sin_theta)
+            phi = np.arctan2(dcm[1,2], dcm[2,2])
+            psi = np.arctan2(dcm[0,1], dcm[0,0])
+            
+        euler = np.array([psi, theta, phi])
+        return euler
+
+    def dcm2quaternion(self,dcm):
+        # calculate quaternion from DCM
+        q = np.zeros(4, dtype=float)
+
+        # q = [q1,q2,q3,q4] version
+        # q[3] = 0.5 * np.sqrt(1 + dcm[0,0] + dcm[1,1] + dcm[2,2])
+        # q[0] = 0.25 * (dcm[1,2] - dcm[2,1]) / q[3]
+        # q[1] = 0.25 * (dcm[2,0] - dcm[0,2]) / q[3]
+        # q[2] = 0.25 * (dcm[0,1] - dcm[1,0]) / q[3]
+
+        #q = [q0,q1,q2,q3] version
+        C0 = np.trace(dcm)
+        C = [C0,dcm[0,0],dcm[1,1],dcm[2,2]]
+        Cj = max(C)
+        j = C.index(Cj)
+        q[j] = 0.5 * np.sqrt(1+2*Cj-C0)
+
+        if j == 0:
+            q[1] =(dcm[1,2] - dcm[2,1]) / (4*q[0])
+            q[2] =(dcm[2,0] - dcm[0,2]) / (4*q[0])
+            q[3] =(dcm[0,1] - dcm[1,0]) / (4*q[0])
+        elif j==1:# %ε(1)が最大の場合
+            q[0]=(dcm[1,2]-dcm[2,1])/(4*q[1])
+            q[3]=(dcm[2,0]+dcm[0,2])/(4*q[1])
+            q[2]=(dcm[0,1]+dcm[1,0])/(4*q[1])
+        elif j==2: # %ε(2)が最大の場合
+            q[0]=(dcm[2,0]-dcm[0,2])/(4*q[2])
+            q[3]=(dcm[1,2]+dcm[2,1])/(4*q[2])
+            q[1]=(dcm[0,1]+dcm[1,0])/(4*q[2])
+        elif j==3: # %ε(3)が最大の場合
+            q[0]=(dcm[1,2]-dcm[2,1])/(4*q[3])
+            q[2]=(dcm[0,1]+dcm[2,0])/(4*q[3])
+            q[1]=(dcm[2,0]+dcm[0,2])/(4*q[3])
+        return q
+
+    # calculate DCM from quaternion
+    def quaternion2dcm(self,q):
+        dcm = np.zeros((3,3), dtype=float)
+
+        #q = [q1,q2,q3,q4] version
+        # dcm[0,0] = q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3]
+        # dcm[0,1] = 2 * (q[0]*q[1] + q[2]*q[3])
+        # dcm[0,2] = 2 * (q[0]*q[2] - q[1]*q[3])
+        # dcm[1,0] = 2 * (q[0]*q[1] - q[2]*q[3])
+        # dcm[1,1] = - q[0]*q[0] + q[1]*q[1] - q[2]*q[2] + q[3]*q[3]
+        # dcm[1,2] = 2 * (q[1]*q[2] + q[0]*q[3])
+        # dcm[2,0] = 2 * (q[0]*q[2] + q[1]*q[3])
+        # dcm[2,1] = 2 * (q[1]*q[2] - q[0]*q[3])
+        # dcm[2,2] = - q[0]*q[0] - q[1]*q[1] + q[2]*q[2] + q[3]*q[3]
+
+        #q = [q0,q1,q2,q3] version
+        dcm[0,0] = q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]
+        dcm[0,1] = 2 * (q[2]*q[1] - q[3]*q[0])
+        dcm[0,2] = 2 * (q[3]*q[1] + q[2]*q[0])
+        dcm[1,0] = 2 * (q[1]*q[2] + q[3]*q[0])
+        dcm[1,1] = q[2]*q[2] - q[3]*q[3] - q[1]*q[1] + q[0]*q[0]
+        dcm[1,2] = 2 * (q[3]*q[2] - q[1]*q[0])
+        dcm[2,0] = 2 * (q[1]*q[3] - q[2]*q[0])
+        dcm[2,1] = 2 * (q[2]*q[3] + q[1]*q[0])
+        dcm[2,2] = - q[2]*q[2] - q[1]*q[1] + q[0]*q[0] + q[3]*q[3]
+        return dcm
+    
+    # differntial calculation of quaternion
+    def quaternion_differential(self, omega, quaternion):
+        mat = np.array([[0,  -omega[0], -omega[1],  -omega[2]],
+                        [omega[0], 0,  omega[2],  -omega[1]],
+                        [omega[1], -omega[2], 0,  omega[0]],
+                        [omega[2], omega[1], -omega[0], 0]])
+        ddt_quaternion = 0.5 * mat @ quaternion
+        return ddt_quaternion
+    
+    def omega_differential(self, omega, inertia_inv, inertia, action):
+        ddt_omega =  inertia_inv @ (-np.cross(omega, inertia @ omega) + action)
+        return ddt_omega
+    
+    #-------end toolbox, start actual env-------
+
 
     def __init__(self):
-        self.g = 9.82  # gravity
-        self.m_c = 0.5  # cart mass
-        self.m_p = 0.5  # pendulum mass
-        self.total_m = (self.m_p + self.m_c)
-        self.l = 0.6  # pole's length
-        self.m_p_l = (self.m_p * self.l)
-        self.force_mag = 10.0
+        # 初期条件　慣性パラメータ
+        self.mass = 10.0
+        self.inertia = np.array([[0.5, 0.0, 0.0], 
+                    [0.0, 0.7, 0.0], 
+                    [0.0, 0.0, 1.0]])
+        self.inertia_inv = np.linalg.inv(self.inertia)
+        self.g = np.array([0,0,0])  # gravity
         self.dt = 0.01  # seconds between state updates
-        self.b = 0.1  # friction coefficient
+        self.simutime = 50
+        
+        # 初期状態 角度(deg)　角速度(rad/s)
+        self.startEuler = np.deg2rad(np.array([-44.34233084,41.69147074,-22.07080979]))
+        self.startQuate = self.dcm2quaternion(self.euler2dcm(self.startEuler))
+        self.startOmega = np.array([0.205,0.404,0.487])
 
-        self.t = 0  # timestep
-        self.t_limit = 500
+        # 目標値(deg)
+        self.goalEuler = np.deg2rad(np.array([0,0,0]))#(np.random.uniform(-np.pi, high=np.pi, size=3))
+        # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
+        #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
+        self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))
+
+        #エラークオータニオンマトリックス
+        er1 = self.goalQuate[0]
+        er2 = self.goalQuate[1]
+        er3 = self.goalQuate[2]
+        er4 = self.goalQuate[3]
+        self.error_Q = np.array([[er1, er2, er3, er4],
+                                [-er2, er1, er4, -er3],
+                                [-er3, -er4, er1, er2],
+                                [-er4, er3, -er2, er1]])
+        
+        self.errorQuate = self.error_Q@self.startQuate
+
+        #エラークオータニオンの微分
+        self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
+
+        #---thresholds for episode-----
+        self.nsteps = 0  # timestep
+        self.max_steps = self.simutime/self.dt
 
         # Angle, angle speed and speed at which to fail the episode
-        self.x_threshold = 6
-        self.x_dot_threshold = 10
-        self.theta_dot_threshold = 10
+        self.maxOmega = 10
+        self.angle_thre = 0.999962
+        #---------------------------
 
+        self.max_torque = 2
+        action_bound = np.array([self.max_torque, self.max_torque, self.max_torque],dtype=np.float32)
+
+        # 状態量（姿勢角４・姿勢角微分４・角速度３）
         high = np.array([
             np.finfo(np.float32).max,
             np.finfo(np.float32).max,
             np.finfo(np.float32).max,
-            np.finfo(np.float32).max])
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,
+            np.finfo(np.float32).max,],dtype=np.float32)
 
-        self.action_space = spaces.Box(-10.0, 10.0, shape=(1,))
+        self.action_space = spaces.Box(-action_bound, action_bound)
         self.observation_space = spaces.Box(-high, high)
+        self.pre_state = np.hstack((self.startQuate,self.startOmega))
+        self.state = np.hstack((self.errorQuate,self.d_errorQuate, self.startOmega))
+        # self.pre_state = [self.startQuate,self.startOmega]
+        # self.state = [self.errorQuate,self.d_errorQuate, self.startOmega]
 
         self.seed()
         self.viewer = None
-        self.state = None
+        self.steps_beyond_done = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -55,152 +214,118 @@ class CartPoleSwingUpContinuousEnv(gym.Env):
 
     def step(self, action):
         # valid action
-        action = np.clip(action, -10.0, 10.0)[0]
+        action = np.clip(action, -self.max_torque, self.max_torque)
 
+        pre_state = self.pre_state
+        # q, omega = pre_state
+        q = pre_state[:4]
+        omega = pre_state[-3:]
+        
         state = self.state
-        x, x_dot, theta, theta_dot = state
+        qe = state[:4]
 
-        # nullify action, if it would normally push the cart out of boundaries
-        if x >= self.x_threshold and action >= 10:
-            action = 0
-        elif x <= -self.x_threshold and action <= -10:
-            action = 0
+        #ステートアップデート（オイラー法）
+        # q_dot = self.quaternion_differential(omega, q)
+        # omega_dot = self.omega_differential(omega,self.inertia_inv,action)
+        # q = q + q_dot * self.dt
+        # omega = omega + omega_dot * self.dt
 
-        s = math.sin(theta)
-        c = math.cos(theta)
+        #ステートアップデート（runge-kutta 法）
+        k1 = self.omega_differential(omega,self.inertia_inv,self.inertia,action)
+        k2 = self.omega_differential(omega + 0.5*self.dt*k1, self.inertia_inv,self.inertia,action)
+        k3 = self.omega_differential(omega + 0.5*self.dt*k2, self.inertia_inv,self.inertia,action)
+        k4 = self.omega_differential(omega + self.dt*k3, self.inertia_inv,self.inertia,action)
 
-        xdot_update = (-2 * self.m_p_l * (
-                theta_dot ** 2) * s + 3 * self.m_p * self.g * s * c + 4 * action - 4 * self.b * x_dot) / (
-                              4 * self.total_m - 3 * self.m_p * c ** 2)
-        thetadot_update = (-3 * self.m_p_l * (theta_dot ** 2) * s * c + 6 * self.total_m * self.g * s + 6 * (
-                action - self.b * x_dot) * c) / (4 * self.l * self.total_m - 3 * self.m_p_l * c ** 2)
-        x = x + x_dot * self.dt
-        theta = theta + theta_dot * self.dt
-        x_dot = x_dot + xdot_update * self.dt
-        theta_dot = theta_dot + thetadot_update * self.dt
+        l1 = self.quaternion_differential(omega, q) 
+        l2 = self.quaternion_differential(omega + 0.5*self.dt*k1, q + 0.5*self.dt*l1)
+        l3 = self.quaternion_differential(omega + 0.5*self.dt*k2, q + 0.5*self.dt*l2)
+        l4 = self.quaternion_differential(omega + self.dt*k3, q + self.dt*l3)
 
-        self.state = (x, x_dot, theta, theta_dot)
+        q_new = q + 1/6 * (l1 + 2*l2 + 2*l3 + l4) * self.dt
+        omega_new = omega + 1/6 * (k1 + 2*k2 + 2*k3 + k4) * self.dt
 
-        done = False
+        qe_new = self.error_Q @ q_new
+        qe_dot_new = self.quaternion_differential(omega_new, qe_new)
 
-        # restrict state of cart to be within its limits without terminating the game
-        if x > self.x_threshold:
-            x = self.x_threshold
-        elif x < -self.x_threshold:
-            x = -self.x_threshold
-        elif x_dot > self.x_dot_threshold:
-            x_dot = self.x_dot_threshold
-        elif x_dot < -self.x_dot_threshold:
-            x_dot = -self.x_dot_threshold
-        elif theta_dot > self.theta_dot_threshold:
-            theta_dot = self.theta_dot_threshold
-        elif theta_dot < -self.theta_dot_threshold:
-            theta_dot = -self.theta_dot_threshold
+        self.pre_state = np.hstack((q_new, omega_new))
+        self.state = np.hstack((qe_new, qe_dot_new, omega_new))
 
-        self.t += 1
+        # self.pre_state = [q_new, omega_new]
+        # self.state = [qe_new, qe_dot_new, omega_new]
 
-        # terminate the game if t >= time limit
-        if self.t >= self.t_limit:
-            done = True
+        # とりまdoneはfalseにしておく
+        # done = False
 
-        # reward function as described in dissertation of Deisenroth with A=1
-        A = 1
-        invT = A * np.array([[1, self.l, 0], [self.l, self.l ** 2, 0], [0, 0, self.l ** 2]])
-        j = np.array([x, np.sin(theta), np.cos(theta)])
-        j_target = np.array([0.0, 0.0, 1.0])
+        #ステップ数を更新
+        self.nsteps += 1
 
-        reward = np.matmul((j - j_target), invT)
-        reward = np.matmul(reward, (j - j_target))
-        reward = -(1 - np.exp(-0.5 * reward))
+        # 終了判定　角速度がマックス値を超える or 最大ステップ数に達したら 
+        done = abs(omega[0]) > self.maxOmega \
+                or abs(omega[1]) > self.maxOmega \
+                or abs(omega[2]) > self.maxOmega \
+                or self.nsteps >= self.max_steps
 
-        obs = np.array([x, x_dot, theta, theta_dot])
+        done = bool(done)
 
-        return obs, reward, done, {}
+        # 報酬関数
+        #--------REWARD---------
+        if not done:
+            if qe_new[0] >= self.angle_thre:
+                reward = np.array([1,-1,-1,-1])@np.power(qe,2)
+            else:
+                if qe_new[0] > qe[0]:
+                    reward = 0.1
+                else:
+                    reward = -0.1
+        
+        elif self.steps_beyond_done is None:
+            # epsiode just ended
+            self.steps_beyond_done = 0
+            if qe_new[0] >= self.angle_thre:
+                reward = np.array([-1,-1,-1,1])*np.power(qe,2)
+            else:
+                if qe_new[0] > qe[0]:
+                    reward = 0.1
+                else:
+                    reward = -0.1
+
+        else:
+            if self.steps_beyond_done == 0:
+                logger.warn("You are calling 'step()' even though this environment has already returned done = True. You should always call 'reset()' once you receive 'done = True' -- any further steps are undefined behavior.")
+            self.steps_beyond_done += 1
+            reward = 0.0
+
+        return self.state, reward, done, self.pre_state, {}
 
     def reset(self):
-        # spawn cart at the same initial state + randomness
-        self.state = np.random.normal(loc=np.array([0.0, 0.0, np.pi, 0.0]), scale=np.array([0.01, 0.01, 0.01, 0.01]))
-        self.t = 0  # timestep
+        # 初期状態 角度(deg)　角速度(rad/s)
+        self.startEuler = np.deg2rad(np.array([-44.34233084,41.69147074,-22.07080979]))
+        self.startQuate = self.dcm2quaternion(self.euler2dcm(self.startEuler))
+        self.startOmega = np.array([0.205,0.404,0.487])
+
+        # 目標値(deg)
+        self.goalEuler = np.deg2rad(np.array([0,0,0]))#(np.random.uniform(-np.pi, high=np.pi, size=3))
+        # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
+        #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
+        self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))
+
+        self.errorQuate = self.error_Q@self.startQuate
+
+        #エラークオータニオンの微分
+        self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
+        self.pre_state = np.hstack((self.startQuate,self.startOmega))
+        self.state = np.hstack((self.errorQuate,self.d_errorQuate, self.startOmega))
+        # self.pre_state = [self.startQuate,self.startOmega]
+        # self.state = [self.errorQuate,self.d_errorQuate, self.startOmega]
+
         obs = self.state
+        # タイムスタンプをリセット
+        self.nsteps = 0  
         return obs
 
-    def render(self, mode='human', close=False):
-        if close:
-            if self.viewer is not None:
-                self.viewer.close()
-                self.viewer = None
-            return
+    def render(self, mode='human'):
+        #do nothing
+        print('rendering currently not supported.')
 
-        screen_width = 600
-        screen_height = 600
-
-        world_width = 5
-        scale = screen_width / world_width
-        carty = screen_height / 2
-        polewidth = 6.0
-        polelen = scale * self.l
-        cartwidth = 40.0
-        cartheight = 20.0
-
-        if self.viewer is None:
-            from gym.envs.classic_control import rendering
-            self.viewer = rendering.Viewer(screen_width, screen_height)
-
-            l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
-
-            cart = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            self.carttrans = rendering.Transform()
-            cart.add_attr(self.carttrans)
-            cart.set_color(1, 0, 0)
-            self.viewer.add_geom(cart)
-
-            l, r, t, b = -polewidth / 2, polewidth / 2, polelen - polewidth / 2, -polewidth / 2
-            pole = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            pole.set_color(0, 0, 1)
-            self.poletrans = rendering.Transform(translation=(0, 0))
-            pole.add_attr(self.poletrans)
-            pole.add_attr(self.carttrans)
-            self.viewer.add_geom(pole)
-
-            self.axle = rendering.make_circle(polewidth / 2)
-            self.axle.add_attr(self.poletrans)
-            self.axle.add_attr(self.carttrans)
-            self.axle.set_color(0.1, 1, 1)
-            self.viewer.add_geom(self.axle)
-
-            self.pole_bob = rendering.make_circle(polewidth / 2)
-            self.pole_bob_trans = rendering.Transform()
-            self.pole_bob.add_attr(self.pole_bob_trans)
-            self.pole_bob.add_attr(self.poletrans)
-            self.pole_bob.add_attr(self.carttrans)
-            self.pole_bob.set_color(0, 0, 0)
-            self.viewer.add_geom(self.pole_bob)
-
-            self.wheel_l = rendering.make_circle(cartheight / 4)
-            self.wheel_r = rendering.make_circle(cartheight / 4)
-            self.wheeltrans_l = rendering.Transform(translation=(-cartwidth / 2, -cartheight / 2))
-            self.wheeltrans_r = rendering.Transform(translation=(cartwidth / 2, -cartheight / 2))
-            self.wheel_l.add_attr(self.wheeltrans_l)
-            self.wheel_l.add_attr(self.carttrans)
-            self.wheel_r.add_attr(self.wheeltrans_r)
-            self.wheel_r.add_attr(self.carttrans)
-            self.wheel_l.set_color(0, 0, 0)
-            self.wheel_r.set_color(0, 0, 0)
-            self.viewer.add_geom(self.wheel_l)
-            self.viewer.add_geom(self.wheel_r)
-
-            self.track = rendering.Line(
-                (screen_width / 2 - self.x_threshold * scale, carty - cartheight / 2 - cartheight / 4),
-                (screen_width / 2 + self.x_threshold * scale, carty - cartheight / 2 - cartheight / 4))
-            self.track.set_color(0, 0, 0)
-            self.viewer.add_geom(self.track)
-
-        if self.state is None: return None
-
-        x = self.state
-        cartx = x[0] * scale + screen_width / 2.0
-        self.carttrans.set_translation(cartx, carty)
-        self.poletrans.set_rotation(x[2])
-        self.pole_bob_trans.set_translation(-self.l * np.sin(x[2]), self.l * np.cos(x[2]))
-
-        return self.viewer.render(return_rgb_array=mode == 'rgb_array')
+    def close(self):
+        print('rendering not supported currently.')

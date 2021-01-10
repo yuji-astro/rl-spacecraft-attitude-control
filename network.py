@@ -49,7 +49,7 @@ class Actor(nn.Module):
         x = F.relu(self.linear2(x))
         # output of tanh is bounded between -1 and 1
         # multiply by maximum action (here: 10N) in order to scale the action appropriately
-        x = torch.tanh(self.linear3(x))*10
+        x = torch.tanh(self.linear3(x))
 
         return x
 
@@ -57,11 +57,10 @@ class Actor(nn.Module):
 class DDPGAgent:
     def __init__(self, env, gamma, tau, buffer_maxlen, critic_learning_rate, actor_learning_rate, train, decay):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+        print(self.device)
         self.env = env
         self.obs_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
-
         # hyperparameters
         self.env = env
         self.gamma = gamma
@@ -90,7 +89,7 @@ class DDPGAgent:
             self.noise = OUNoise(self.env.action_space, decay_period=self.decay)
 
     def get_action(self, obs, t=0):
-        state = torch.FloatTensor(obs).unsqueeze(0).to(self.device)
+        state = torch.FloatTensor(obs.flatten()).unsqueeze(0).to(self.device)
         action = self.actor.forward(state)
         action = action.squeeze(0).cpu().detach().numpy()
         # add exploration noise only during training

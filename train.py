@@ -3,14 +3,18 @@ import os
 import math
 import matplotlib.pyplot as plt
 import torch
+from gym import wrappers 
+import numpy as np
+
 
 from network import DDPGAgent
 from utils import *
 
 
-def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_steps=500, gamma=0.99, tau=1e-3,
+def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_steps=int(30/0.01), gamma=0.99, tau=1e-3,
           buffer_maxlen=100000):
-    env = make("CartPoleSwingUpContinuous")
+    # simulation of the agent solving the spacecraft attitude control problem
+    env = make("SatelliteContinuous")
 
     max_episodes = max_episodes
     max_steps = max_steps
@@ -29,57 +33,231 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     plt.plot(episode_rewards)
     plt.xlabel("Episodes")
     plt.ylabel("Reward")
+    plt.show()
 
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("models"):
         os.mkdir("models")
-    torch.save(agent, curr_dir + "/models/cartpole_swingup_ddpg.pkl")
+    torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
 
 
 def evaluate():
     # simulation of the agent solving the cartpole swing-up problem
-    env = make("CartPoleSwingUpContinuous")
+    env = make("SatelliteContinuous")
     # uncomment for recording a video of simulation
-    # env = Monitor(env, './video', force=True)
+    # env = wrappers.Monitor(env, './video', force=True)
 
     curr_dir = os.path.abspath(os.getcwd())
-    agent = torch.load(curr_dir + "/models/cartpole_swingup_ddpg.pkl")
+
+    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     agent.train = False
 
     state = env.reset()
     r = 0
-    theta = []
-    actions = []
-    for i in range(500):
+    qe = np.empty((0,4))
+    q = np.empty((0,4))
+    w = np.empty((0,3))
+    actions = np.empty((0,3))
+
+    dt = 0.01
+    simutime = 50
+    simulation_iterations = int(simutime/dt) -1 # dt is 0.01
+
+    for i in range(1, simulation_iterations):
         action = agent.get_action(state)
-        next_state, reward, done, _ = env.step(action)
-        actions.append(action)
-        env.render()
-        theta.append(math.degrees(next_state[2]))
+        # action = np.squeeze(action)
+        next_error_state, reward, done, next_state, _ = env.step(action)
+        # env.render()
+        q=np.append(q,next_state[0].reshape(1,-1),axis=0)
+        qe=np.append(qe,next_error_state[0].reshape(1,-1),axis=0)
+        w=np.append(w,next_error_state[2].reshape(1,-1),axis=0)
         r += reward
+
         state = next_state
 
     env.close()
+    #-------------------------------結果のプロット----------------------------------
+    #show the total reward
+    print("Total Reward is : " + str(r))
+    # データの形の整理
+    q = q.reshape([-1,4])
+    qe = qe.reshape([-1,4])
+    w = w.reshape([-1,3])
+    # angle = [e for i in]
+
+    # plot the angle and action curve
+    #-------------------plot settings------------------------------
+    plt.rcParams['font.family'] = 'Times New Roman' # font familyの設定
+    plt.rcParams['mathtext.fontset'] = 'stix' # math fontの設定
+    plt.rcParams["font.size"] = 15 # 全体のフォントサイズが変更されます。
+    plt.rcParams['xtick.labelsize'] = 15 # 軸だけ変更されます。
+    plt.rcParams['ytick.labelsize'] = 15 # 軸だけ変更されます 
+    plt.rcParams['xtick.direction'] = 'in' # x axis in
+    plt.rcParams['ytick.direction'] = 'in' # y axis in 
+    plt.rcParams['axes.linewidth'] = 1.0 # axis line width
+    plt.rcParams['axes.grid'] = True # make grid
+    #--------------------------------------------------------------  
+    curr_dir = os.path.abspath(os.getcwd())
+    if not os.path.isdir("results"):
+        os.mkdir("results")
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,0],label =r"$q_{0}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,1],label =r"$q_{1}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,2],label =r"$q_{2}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,3],label =r"$q_{3}$")
+    plt.title('Quaternion')
+    plt.ylabel('quaternion value')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    plt.savefig(curr_dir + "/results/plot_quaternion.png")
+
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,0],label =r"$q_{0}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,1],label =r"$q_{1}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,2],label =r"$q_{2}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,3],label =r"$q_{3}$")
+    plt.title('Quaternion Error')
+    plt.ylabel('quaternion value')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    plt.savefig(curr_dir + "/results/plot_error_quaternion.png")
+
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,0],label =r"$\omega_{x}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,1],label =r"$\omega_{y}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,2],label =r"$\omega_{z}$")
+    plt.title('Angular velocity')
+    plt.ylabel('angular velocity [rad/s]')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    plt.savefig(curr_dir + "/results/plot_ang_vel.png")
+
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,0],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,1],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,2],label = r"$\tau_{x}$")
+    plt.title('Action')
+    plt.ylabel('Input torque [Nm]')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    plt.savefig(curr_dir + "/results/plot_torque.png")
+
+    plt.show()
+    # -------------------------結果プロット終わり--------------------------------
+def env_test():
+
+    # simulation of the agent solving the cartpole swing-up problem
+    env = make("SatelliteContinuous")
+    # uncomment for recording a video of simulation
+    # env = wrappers.Monitor(env, './video', force=True)
+
+    curr_dir = os.path.abspath(os.getcwd())
+    env.reset()
+    r = 0
+    qe = np.empty((0,4))
+    q = np.empty((0,4))
+    w = np.empty((0,3))
+    actions = np.empty((0,3))
+
+    kp = 0.7
+    kd = 1.9
+    Kp = np.array([[0,kp,0,0],
+                  [0,0,kp,0],
+                  [0,0,0,kp]])
+    Kd = np.array([[kd,0,0],
+                  [0,kd,0],
+                  [0,0,kd]])
+    action = np.array([0,0,0]).reshape(1,3)
+    actions = np.append(actions, action,axis=0)
+
+    dt = 0.01
+    simulation_iterations = int(50/0.01) -1 # dt is 0.01
+
+    for i in range(1, simulation_iterations):
+        action = np.squeeze(action)
+        next_error_state, reward, done, next_state, _ = env.step(action)
+        # env.render()
+        # q=np.append(q,next_state[0].reshape(1,-1),axis=0)
+        # qe=np.append(qe,next_error_state[0].reshape(1,-1),axis=0)
+        # w=np.append(w,next_error_state[2].reshape(1,-1),axis=0)
+        q=np.append(q,next_state[:4].reshape(1,-1),axis=0)
+        qe=np.append(qe,next_error_state[:4].reshape(1,-1),axis=0)
+        w=np.append(w,next_error_state[-3:].reshape(1,-1),axis=0)
+        r += reward
+        # state = next_state
+        #----------------control law (PID controller)-----------------------
+        action = -Kp@next_error_state[:4].reshape(-1,1)-Kd@next_error_state[-3:].reshape(-1,1)
+        actions = np.append(actions, action.reshape(1,-1),axis=0)
+        #--------------------------------------------------------------------
+
+    # env.close()
+    #show the total reward
+    print("Total Reward is : " + str(r))
+    # データの形の整理
+    q = q.reshape([-1,4])
+    qe = qe.reshape([-1,4])
+    w = w.reshape([-1,3])
+    # angle = [e for i in]
 
     # plot the angle and action curve
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("results"):
         os.mkdir("results")
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,0],label =r"$q_{0}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,1],label =r"$q_{1}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,2],label =r"$q_{2}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, q[:,3],label =r"$q_{3}$")
+    plt.title('Quaternion')
+    plt.ylabel('quaternion value')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-    plt.figure()
-    plt.plot(theta)
-    plt.title('Angle')
-    plt.ylabel('Angle in degrees')
-    plt.xlabel('Time step t')
-    plt.savefig(curr_dir + "/results/plot_angle.png")
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,0],label =r"$q_{0}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,1],label =r"$q_{1}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,2],label =r"$q_{2}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,3],label =r"$q_{3}$")
+    plt.title('Quaternion Error')
+    plt.ylabel('quaternion value')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-    plt.figure()
-    plt.plot(actions)
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,0],label =r"$\omega_{x}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,1],label =r"$\omega_{y}$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, w[:,2],label =r"$\omega_{z}$")
+    plt.title('Angular velocity')
+    plt.ylabel('angular velocity [rad/s]')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+    # plt.savefig(curr_dir + "/results/plot_angle.png")
+
+    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,0],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,1],label = r"$\tau_{x}$")
+    plt.plot(np.arange(simulation_iterations)*dt, actions[:,2],label = r"$\tau_{x}$")
     plt.title('Action')
-    plt.ylabel('Action in Newton')
-    plt.xlabel('Time step t')
-    plt.savefig(curr_dir + "/results/plot_action.png")
+    plt.ylabel('Input torque [Nm]')
+    plt.xlabel(r'time [s]')
+    plt.legend()
+    plt.grid(color='k', linestyle='dotted', linewidth=0.6)
+
+    # plt.savefig(curr_dir + "/results/plot_action.png")
+    plt.show()
 
 
 if __name__ == '__main__':
-    evaluate()
+    plt.close()
+    # evaluate()
+    train()
+    # env_test()

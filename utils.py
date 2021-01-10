@@ -43,7 +43,7 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
                         print("\nEpisode " + str(episode) + " total reward : " + str(episode_reward))
                         break
 
-                        state = next_error_state
+                    state = next_error_state
                     # Early stopping, if cumulative rewards of 10 consecutive games were >-55
                     # if counter == 10:
                         # break

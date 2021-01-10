@@ -11,7 +11,7 @@ from network import DDPGAgent
 from utils import *
 
 
-def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_steps=int(30/0.01), gamma=0.99, tau=1e-3,
+def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_steps=500, gamma=0.99, tau=1e-3,
           buffer_maxlen=100000):
     # simulation of the agent solving the spacecraft attitude control problem
     env = make("SatelliteContinuous")
@@ -27,6 +27,9 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     actor_lr = actor_lr
 
     agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
+    # curr_dir = os.path.abspath(os.getcwd())
+    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    print(agent)
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
     plt.figure()

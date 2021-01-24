@@ -26,9 +26,9 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     critic_lr = critic_lr
     actor_lr = actor_lr
 
-    agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
+    #agent = DDPGAgent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
     curr_dir = os.path.abspath(os.getcwd())
-    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
@@ -36,7 +36,7 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     plt.plot(episode_rewards)
     plt.xlabel("Episodes")
     plt.ylabel("Reward")
-    plt.show()
+	plt.show()
 
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("models"):

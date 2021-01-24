@@ -59,13 +59,6 @@ class SatelliteContinuousEnv(gym.Env):
     def dcm2quaternion(self,dcm):
         # calculate quaternion from DCM
         q = np.zeros(4, dtype=float)
-
-        # q = [q1,q2,q3,q4] version
-        # q[3] = 0.5 * np.sqrt(1 + dcm[0,0] + dcm[1,1] + dcm[2,2])
-        # q[0] = 0.25 * (dcm[1,2] - dcm[2,1]) / q[3]
-        # q[1] = 0.25 * (dcm[2,0] - dcm[0,2]) / q[3]
-        # q[2] = 0.25 * (dcm[0,1] - dcm[1,0]) / q[3]
-
         #q = [q0,q1,q2,q3] version
         C0 = np.trace(dcm)
         C = [C0,dcm[0,0],dcm[1,1],dcm[2,2]]
@@ -77,35 +70,31 @@ class SatelliteContinuousEnv(gym.Env):
             q[1] =(dcm[1,2] - dcm[2,1]) / (4*q[0])
             q[2] =(dcm[2,0] - dcm[0,2]) / (4*q[0])
             q[3] =(dcm[0,1] - dcm[1,0]) / (4*q[0])
+            if q[0] < 0:
+                q = -q
         elif j==1:# %ε(1)が最大の場合
             q[0]=(dcm[1,2]-dcm[2,1])/(4*q[1])
             q[3]=(dcm[2,0]+dcm[0,2])/(4*q[1])
             q[2]=(dcm[0,1]+dcm[1,0])/(4*q[1])
+            if q[0] < 0:
+                q = -q           
         elif j==2: # %ε(2)が最大の場合
             q[0]=(dcm[2,0]-dcm[0,2])/(4*q[2])
             q[3]=(dcm[1,2]+dcm[2,1])/(4*q[2])
             q[1]=(dcm[0,1]+dcm[1,0])/(4*q[2])
+            if q[0] < 0:
+                q = -q
         elif j==3: # %ε(3)が最大の場合
-            q[0]=(dcm[1,2]-dcm[2,1])/(4*q[3])
-            q[2]=(dcm[0,1]+dcm[2,0])/(4*q[3])
+            q[0]=(dcm[0,1]-dcm[1,0])/(4*q[3])
+            q[2]=(dcm[1,2]+dcm[2,1])/(4*q[3])
             q[1]=(dcm[2,0]+dcm[0,2])/(4*q[3])
+            if q[0] < 0:
+                q = -q
         return q
 
     # calculate DCM from quaternion
     def quaternion2dcm(self,q):
         dcm = np.zeros((3,3), dtype=float)
-
-        #q = [q1,q2,q3,q4] version
-        # dcm[0,0] = q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3]
-        # dcm[0,1] = 2 * (q[0]*q[1] + q[2]*q[3])
-        # dcm[0,2] = 2 * (q[0]*q[2] - q[1]*q[3])
-        # dcm[1,0] = 2 * (q[0]*q[1] - q[2]*q[3])
-        # dcm[1,1] = - q[0]*q[0] + q[1]*q[1] - q[2]*q[2] + q[3]*q[3]
-        # dcm[1,2] = 2 * (q[1]*q[2] + q[0]*q[3])
-        # dcm[2,0] = 2 * (q[0]*q[2] + q[1]*q[3])
-        # dcm[2,1] = 2 * (q[1]*q[2] - q[0]*q[3])
-        # dcm[2,2] = - q[0]*q[0] - q[1]*q[1] + q[2]*q[2] + q[3]*q[3]
-
         #q = [q0,q1,q2,q3] version
         dcm[0,0] = q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]
         dcm[0,1] = 2 * (q[2]*q[1] - q[3]*q[0])
@@ -142,16 +131,16 @@ class SatelliteContinuousEnv(gym.Env):
                     [0.0, 0.0, 1.0]])
         self.inertia_inv = np.linalg.inv(self.inertia)
         self.g = np.array([0,0,0])  # gravity
-        self.dt = 0.01  # seconds between state updates
-        self.simutime = 50
+        self.dt = 0.1  # seconds between state updates
+        self.simutime = 30
         
         # 初期状態 角度(deg)　角速度(rad/s)
-        self.startEuler = np.deg2rad(np.array([-44.34233084,41.69147074,-22.07080979]))
+        self.startEuler = np.deg2rad(np.array([0,0,0]))
         self.startQuate = self.dcm2quaternion(self.euler2dcm(self.startEuler))
-        self.startOmega = np.array([0.205,0.404,0.487])
+        self.startOmega = np.array([0,0,0])
 
         # 目標値(deg)
-        self.goalEuler = np.deg2rad(np.array([0,0,0]))#(np.random.uniform(-np.pi, high=np.pi, size=3))
+        self.goalEuler = np.deg2rad(np.random.uniform(-np.pi/5, high=np.pi/5, size=3))
         # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
         #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
         self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))
@@ -180,7 +169,7 @@ class SatelliteContinuousEnv(gym.Env):
         self.angle_thre = 0.999962
         #---------------------------
 
-        self.max_torque = 2
+        self.max_torque = 1
         action_bound = np.array([self.max_torque, self.max_torque, self.max_torque],dtype=np.float32)
 
         # 状態量（姿勢角４・姿勢角微分４・角速度３）
@@ -299,12 +288,12 @@ class SatelliteContinuousEnv(gym.Env):
 
     def reset(self):
         # 初期状態 角度(deg)　角速度(rad/s)
-        self.startEuler = np.deg2rad(np.array([-44.34233084,41.69147074,-22.07080979]))
+        self.startEuler = np.deg2rad(np.array([0,0,0]))
         self.startQuate = self.dcm2quaternion(self.euler2dcm(self.startEuler))
-        self.startOmega = np.array([0.205,0.404,0.487])
+        self.startOmega = np.array([0,0,0])
 
         # 目標値(deg)
-        self.goalEuler = np.deg2rad(np.array([0,0,0]))#(np.random.uniform(-np.pi, high=np.pi, size=3))
+        self.goalEuler = np.deg2rad(np.random.uniform(-np.pi/5, high=np.pi/5, size=3))
         # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
         #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
         self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))
@@ -333,6 +322,7 @@ class SatelliteContinuousEnv(gym.Env):
         obs = self.state
         # タイムスタンプをリセット
         self.nsteps = 0  
+        self.steps_beyond_done = None
         return obs
 
     def render(self, mode='human'):

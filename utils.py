@@ -21,7 +21,6 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
             # for episode in range(max_episodes):
                 state = env.reset()
                 episode_reward = 0    
-                
                 for step in range(max_steps):
                     pbar.set_postfix(steps = step)#OrderedDict(loss=1-episode/5, acc=episode/10))
                     action = agent.get_action(state, (episode + 1) * (step + 1))

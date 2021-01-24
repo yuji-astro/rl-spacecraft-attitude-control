@@ -72,9 +72,9 @@ def evaluate():
         # action = np.squeeze(action)
         next_error_state, reward, done, next_state, _ = env.step(action)
         # env.render()
-        q=np.append(q,next_state[0].reshape(1,-1),axis=0)
-        qe=np.append(qe,next_error_state[0].reshape(1,-1),axis=0)
-        w=np.append(w,next_error_state[2].reshape(1,-1),axis=0)
+        q=np.append(q,next_state[0:4].reshape(1,-1),axis=0)
+        qe=np.append(qe,next_error_state[0:4].reshape(1,-1),axis=0)
+        w=np.append(w,next_error_state[8:11].reshape(1,-1),axis=0)
         r += reward
         actions = np.append(actions, action.reshape(1,-1),axis=0)
 

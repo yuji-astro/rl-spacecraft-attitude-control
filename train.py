@@ -36,7 +36,8 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_
     plt.plot(episode_rewards)
     plt.xlabel("Episodes")
     plt.ylabel("Reward")
-	plt.show()
+	# plt.show()
+    plt.savefig(curr_dir + "/results/plot_reward_hist.png")
 
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("models"):

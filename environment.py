@@ -293,7 +293,8 @@ class SatelliteContinuousEnv(gym.Env):
         self.startOmega = np.array([0,0,0])
 
         # 目標値(deg)
-        self.goalEuler = np.random.uniform(-np.pi/5, high=np.pi/5, size=3)
+        coef = 2*np.random.randint(0,2,size=3)-1
+        self.goalEuler = coef*np.random.uniform(np.pi/6, high=np.pi/5, size=3)
         # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
         #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
         self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))

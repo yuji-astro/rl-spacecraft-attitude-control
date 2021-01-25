@@ -129,6 +129,22 @@ def evaluate():
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     plt.savefig(curr_dir + "/results/plot_error_quaternion.png")
 
+    angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(simulation_iterations-1)])
+    angle = angle.reshape([-1,3])
+    plt.figure(figsize=(yoko,tate),dpi=100)
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,0],label = r"$\phi$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,1],label = r"$\theta$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,2],label = r"$\psi$")
+    # plt.title('Action')
+    plt.ylabel('angle [deg]')
+    plt.xlabel(r'time [s]')
+    plt.legend(loc="lower center", bbox_to_anchor=(0.5,1.05), ncol=3)
+    plt.tight_layout()
+    # plt.ylim(-20, 20)
+    plt.grid(True, color='k', linestyle='dotted', linewidth=0.8)
+    plt.savefig(curr_dir + "/results/plot_angle.png")
+
+
     plt.figure(figsize=(5.0,3.5),dpi=100)
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,0],label =r"$\omega_{x}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,1],label =r"$\omega_{y}$")

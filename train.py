@@ -11,7 +11,7 @@ from network import DDPGAgent
 from utils import *
 
 
-def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=1000, max_steps=300, gamma=0.99, tau=1e-3,
+def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=10000, max_steps=300, gamma=0.99, tau=1e-3,
           buffer_maxlen=100000):
     # simulation of the agent solving the spacecraft attitude control problem
     env = make("SatelliteContinuous")

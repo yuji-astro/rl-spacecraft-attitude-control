@@ -261,6 +261,7 @@ class SatelliteContinuousEnv(gym.Env):
         if not done:
             reward = -0.05*action@action
             if qe_new[0] >= self.angle_thre:
+                reward = -0.5*action@action
                 reward += np.array([1,-1,-1,-1])@np.power(qe,2)
             else:
                 if qe_new[0] > qe[0]:

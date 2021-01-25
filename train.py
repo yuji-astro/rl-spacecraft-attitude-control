@@ -57,6 +57,7 @@ def evaluate():
     agent.train = False
 
     state = env.reset()
+    print('The goal angle :'+ str(env.goalEuler))
     r = 0
     qe = np.empty((0,4))
     q = np.empty((0,4))

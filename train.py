@@ -131,7 +131,7 @@ def evaluate():
 
     angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(simulation_iterations-1)])
     angle = angle.reshape([-1,3])
-    plt.figure(figsize=(yoko,tate),dpi=100)
+    plt.figure(figsize=(5.0,3.5),dpi=100)
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,0],label = r"$\phi$")
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,1],label = r"$\theta$")
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,2],label = r"$\psi$")

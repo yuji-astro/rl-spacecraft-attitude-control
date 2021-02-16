@@ -106,7 +106,8 @@ class Actor(nn.Module):
 
 
 class TD3Agent:
-    def __init__(self, env, gamma, tau, buffer_maxlen, critic_learning_rate, actor_learning_rate, train, decay):
+    def __init__(self, env, gamma, tau, buffer_maxlen, critic_learning_rate, actor_learning_rate, train, decay
+                    policy_freq, policy_noise, noise_clip):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)
         self.env = env
@@ -120,11 +121,14 @@ class TD3Agent:
         self.train = train  # set to true if we want to train the agent, set to false to simulate agent
         self.decay = decay
         self.max_action = 1
-        self.policy_noise = 0.2
-        self.noise_clip = 0.5
+        self.policy_noise = policy_noise
+        self.noise_clip = noise_clip
+
+        self.critic_loss_for_log = 0
+        self.actor_loss_for_log = 0
 
         #ポリシーの更新頻度
-        self.policy_freq = 2 
+        self.policy_freq = policy_freq
         self.total_it = 0
 
         # initialize actor and critic networks
@@ -185,6 +189,7 @@ class TD3Agent:
         curr_Q1, curr_Q2 = self.critic.forward(state_batch, action_batch)
         # update critic
         q_loss = F.mse_loss(curr_Q1, expected_Q.detach()) + F.mse_loss(curr_Q2, expected_Q.detach())
+        self.critic_loss_for_log = q_loss.detach()
 
         self.critic_optimizer.zero_grad()
         q_loss.backward()
@@ -193,6 +198,7 @@ class TD3Agent:
         # update actor (deleyed)
         if self.total_it % self.policy_freq == 0:
             policy_loss = -self.critic.Q1(state_batch, self.actor.forward(state_batch)).mean()
+            self.actor_loss_for_log = policy_loss.detach()
 
             self.actor_optimizer.zero_grad()
             policy_loss.backward()

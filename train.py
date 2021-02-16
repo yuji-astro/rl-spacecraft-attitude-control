@@ -5,30 +5,53 @@ import matplotlib.pyplot as plt
 import torch
 from gym import wrappers 
 import numpy as np
+import wandb
 
 
 from network import TD3Agent
 from utils import *
 
 
-def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=50000, max_steps=300, gamma=0.99, tau=1e-3,
-          buffer_maxlen=100000):
+def train():
     # simulation of the agent solving the spacecraft attitude control problem
     env = make("SatelliteContinuous")
+    #logger
+    wandb.init(project='Satellite-continuous',
+        config={
+        "batch_size": 128,
+        "critic_lr": 1e-3,
+        "actor_lr": 1e-4,
+        "max_episodes": 10000,
+        "max_steps": 300,
+        "gamma": 0.99,
+        "tau" : 1e-3,
+        "buffer_maxlen": 100000,
+        "policy_noise": 0.2,
+        "policy_freq": 2,
+        "noise_clip": 0.5
+        "prioritized_on": False,
+        "State": 'angle, ang_rate, ang_vel',}
+    )
+    config = wandb.config
 
-    max_episodes = max_episodes
-    max_steps = max_steps
-    batch_size = batch_size
+    max_episodes = config.max_episodes
+    max_steps = config.max_steps
+    batch_size = config.batch_size
 
-    gamma = gamma
-    tau = tau
-    buffer_maxlen = buffer_maxlen
-    critic_lr = critic_lr
-    actor_lr = actor_lr
+    policy_noise = config.policy_noise
+    policy_freq = config.policy_freq
+    noise_clip = config.noise_clip
 
-    # agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps)
-    curr_dir = os.path.abspath(os.getcwd())
-    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    gamma = config.gamma
+    buffer_maxlen = config.buffer_maxlen
+    tau = config.tau
+    critic_lr = config.critic_lr
+    actor_lr = config.actor_lr
+
+    agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
+                    policy_freq, policy_noise, noise_clip)
+    # curr_dir = os.path.abspath(os.getcwd())
+    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
@@ -37,12 +60,12 @@ def train(batch_size=128, critic_lr=1e-3, actor_lr=1e-4, max_episodes=50000, max
     plt.xlabel("Episodes")
     plt.ylabel("Reward")
 	# plt.show()
-    plt.savefig(curr_dir + "/results/plot_reward_hist.png")
+    # plt.savefig(curr_dir + "/results/plot_reward_hist.png")
 
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("models"):
         os.mkdir("models")
-    torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    # torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
 
 
 def evaluate():
@@ -106,7 +129,10 @@ def evaluate():
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("results"):
         os.mkdir("results")
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    
+    plt.figure(figsize=(12,5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(231)
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,0],label =r"$q_{0}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,1],label =r"$q_{1}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,2],label =r"$q_{2}$")
@@ -116,9 +142,10 @@ def evaluate():
     plt.xlabel(r'time [s]')
     plt.legend()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
-    plt.savefig(curr_dir + "/results/plot_quaternion.png")
+    # plt.savefig(curr_dir + "/results/plot_quaternion.png")
 
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(232)
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,0],label =r"$q_{0}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,1],label =r"$q_{1}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,2],label =r"$q_{2}$")
@@ -128,11 +155,12 @@ def evaluate():
     plt.xlabel(r'time [s]')
     plt.legend()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
-    plt.savefig(curr_dir + "/results/plot_error_quaternion.png")
+    # plt.savefig(curr_dir + "/results/plot_error_quaternion.png")
 
     angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(simulation_iterations-1)])
     angle = angle.reshape([-1,3])
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(233)
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,0],label = r"$\phi$")
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,1],label = r"$\theta$")
     plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,2],label = r"$\psi$")
@@ -143,10 +171,10 @@ def evaluate():
     plt.tight_layout()
     # plt.ylim(-20, 20)
     plt.grid(True, color='k', linestyle='dotted', linewidth=0.8)
-    plt.savefig(curr_dir + "/results/plot_angle.png")
+    # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(234)
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,0],label =r"$\omega_{x}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,1],label =r"$\omega_{y}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,2],label =r"$\omega_{z}$")
@@ -155,9 +183,10 @@ def evaluate():
     plt.xlabel(r'time [s]')
     plt.legend()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
-    plt.savefig(curr_dir + "/results/plot_ang_vel.png")
+    # plt.savefig(curr_dir + "/results/plot_ang_vel.png")
 
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(235)
     plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,0],label = r"$\tau_{x}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,1],label = r"$\tau_{x}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, actions[:,2],label = r"$\tau_{x}$")
@@ -166,8 +195,8 @@ def evaluate():
     plt.xlabel(r'time [s]')
     plt.legend()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
-    plt.savefig(curr_dir + "/results/plot_torque.png")
-
+    # plt.savefig(curr_dir + "/results/plot_torque.png")
+    plt.savefig(curr_dir + "/results/total_results.png")
     plt.show()
     # -------------------------結果プロット終わり--------------------------------
 def env_test():

@@ -106,7 +106,7 @@ class Actor(nn.Module):
 
 
 class TD3Agent:
-    def __init__(self, env, gamma, tau, buffer_maxlen, critic_learning_rate, actor_learning_rate, train, decay
+    def __init__(self, env, gamma, tau, buffer_maxlen, critic_learning_rate, actor_learning_rate, train, decay,
                     policy_freq, policy_noise, noise_clip):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)

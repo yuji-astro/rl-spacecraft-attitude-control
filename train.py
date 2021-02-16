@@ -30,7 +30,7 @@ def train():
         "policy_freq": 2,
         "noise_clip": 0.5,
         "prioritized_on": False,
-        "State": 'angle, ang_rate, ang_vel',}
+        "State": 'angle:4, ang_rate:4, ang_vel:3',}
     )
     config = wandb.config
 
@@ -50,6 +50,7 @@ def train():
 
     agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
                     policy_freq, policy_noise, noise_clip)
+    wandb.watch([agent.critic,agent.actor], log="all")
     # curr_dir = os.path.abspath(os.getcwd())
     # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

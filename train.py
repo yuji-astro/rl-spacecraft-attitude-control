@@ -28,7 +28,7 @@ def train():
         "buffer_maxlen": 100000,
         "policy_noise": 0.2,
         "policy_freq": 2,
-        "noise_clip": 0.5
+        "noise_clip": 0.5,
         "prioritized_on": False,
         "State": 'angle, ang_rate, ang_vel',}
     )

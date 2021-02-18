@@ -50,7 +50,7 @@ def train():
 
     agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
                     policy_freq, policy_noise, noise_clip)
-    wandb.watch([agent.critic,agent.actor], log="all")
+    # wandb.watch([agent.critic,agent.actor], log="all")
     # curr_dir = os.path.abspath(os.getcwd())
     # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,7 +66,7 @@ def train():
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("models"):
         os.mkdir("models")
-    # torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
 
 
 def evaluate():

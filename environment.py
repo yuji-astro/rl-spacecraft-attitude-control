@@ -260,7 +260,7 @@ class SatelliteContinuousEnv(gym.Env):
         #--------REWARD---------
         if not done:
             # reward = -0.05*action@action
-            reward = -((1-qe_new[0])**2 + qe[1:]@qe[1:] + omega_new@omega_new + action@action) 
+            reward = -((1-qe_new[0])**2 + qe_new[1:]@qe_new[1:] + omega_new@omega_new + action@action) 
             # if qe_new[0] >= self.angle_thre:
             #     reward = -0.5*action@action
             #     reward += np.array([1,-1,-1,-1])@np.power(qe,2)
@@ -273,7 +273,7 @@ class SatelliteContinuousEnv(gym.Env):
         elif self.steps_beyond_done is None:
             # epsiode just ended
             self.steps_beyond_done = 0
-            reward = -((1-qe_new[0])**2 + qe[1:]@qe[1:] + omega_new@omega_new + action@action) 
+            reward = -((1-qe_new[0])**2 + qe_new[1:]@qe_new[1:] + omega_new@omega_new + action@action) 
 
             # if qe_new[0] >= self.angle_thre:
             #     reward = np.array([-1,-1,-1,1])@np.power(qe,2)
@@ -292,14 +292,22 @@ class SatelliteContinuousEnv(gym.Env):
         return self.state, reward, done, self.pre_state, {}
 
     def reset(self):
+        self.inertia = np.array([[0.5, 0.0, 0.0], 
+                    [0.0, 0.7, 0.0], 
+                    [0.0, 0.0, 1.0]])
+        self.multi = np.random.randint(100,3000)/100
+        self.inertia = self.multi * self.inertia
+        self.inertia_inv = np.linalg.inv(self.inertia)
         # 初期状態 角度(deg)　角速度(rad/s)
         self.startEuler = np.deg2rad(np.array([0,0,0]))
         self.startQuate = self.dcm2quaternion(self.euler2dcm(self.startEuler))
-        self.startOmega = np.array([0,0,0])
+        coef = 2*np.random.randint(0,2,size=3)-1
+        self.startOmega = coef*np.deg2rad(np.array([5,-5,5]))
+        # self.startOmega = np.array([0,0,0])
 
         # 目標値(deg)
         coef = 2*np.random.randint(0,2,size=3)-1
-        self.goalEuler = coef*np.random.uniform(np.pi/4, high=np.pi/3, size=3)
+        self.goalEuler =  np.deg2rad(np.array([0, 0, 0])) #coef*np.random.uniform(np.pi/4, high=np.pi/3, size=3)
         # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
         #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
         self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))

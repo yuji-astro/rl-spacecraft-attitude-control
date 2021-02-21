@@ -48,11 +48,11 @@ def train():
     critic_lr = config.critic_lr
     actor_lr = config.actor_lr
 
-    agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
-                    policy_freq, policy_noise, noise_clip)
+    # agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
+                    # policy_freq, policy_noise, noise_clip)
     # wandb.watch([agent.critic,agent.actor], log="all")
-    # curr_dir = os.path.abspath(os.getcwd())
-    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    curr_dir = os.path.abspath(os.getcwd())
+    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
@@ -68,6 +68,61 @@ def train():
         os.mkdir("models")
     torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
 
+def train():
+    # simulation of the agent solving the spacecraft attitude control problem
+    env = make("SatelliteContinuous")
+    #logger
+    wandb.init(project='Para-Tune-RL-PD',
+        config={
+        "batch_size": 128,
+        "critic_lr": 1e-3,
+        "actor_lr": 1e-4,
+        "max_episodes": 10000,
+        "max_steps": 300,
+        "gamma": 0.99,
+        "tau" : 1e-3,
+        "buffer_maxlen": 100000,
+        "policy_noise": 0.2,
+        "policy_freq": 2,
+        "noise_clip": 0.5,
+        "prioritized_on": False,
+        "State": 'angle:4, ang_rate:4, ang_vel:3',}
+    )
+    config = wandb.config
+
+    max_episodes = config.max_episodes
+    max_steps = config.max_steps
+    batch_size = config.batch_size
+
+    policy_noise = config.policy_noise
+    policy_freq = config.policy_freq
+    noise_clip = config.noise_clip
+
+    gamma = config.gamma
+    buffer_maxlen = config.buffer_maxlen
+    tau = config.tau
+    critic_lr = config.critic_lr
+    actor_lr = config.actor_lr
+
+    agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
+                    policy_freq, policy_noise, noise_clip)
+    # wandb.watch([agent.critic,agent.actor], log="all")
+    # curr_dir = os.path.abspath(os.getcwd())
+    # agent = torch.load(curr_dir + "/models/pd_tune.pkl")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    episode_rewards = mini_batch_train_pd(env, agent, max_episodes, max_steps, batch_size)
+
+    plt.figure()
+    plt.plot(episode_rewards)
+    plt.xlabel("Episodes")
+    plt.ylabel("Reward")
+	# plt.show()
+    # plt.savefig(curr_dir + "/results/plot_reward_hist.png")
+
+    curr_dir = os.path.abspath(os.getcwd())
+    if not os.path.isdir("models"):
+        os.mkdir("models")
+    torch.save(agent, curr_dir + "/models/pd_tune.pkl")
 
 def evaluate():
     # simulation of the agent solving the cartpole swing-up problem
@@ -77,7 +132,8 @@ def evaluate():
 
     curr_dir = os.path.abspath(os.getcwd())
 
-    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl",map_location='cpu')
+    agent.device = torch.device('cpu')
     agent.train = False
 
     state = env.reset()
@@ -226,8 +282,9 @@ def env_test():
     action = np.array([0,0,0]).reshape(1,3)
     actions = np.append(actions, action,axis=0)
 
-    dt = 0.01
-    simulation_iterations = int(50/0.01) -1 # dt is 0.01
+    dt = 0.1
+    simutime = 30
+    simulation_iterations = int(simutime/dt) -1 # dt is 0.01
 
     for i in range(1, simulation_iterations):
         action = np.squeeze(action)
@@ -259,7 +316,9 @@ def env_test():
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("results"):
         os.mkdir("results")
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.figure(figsize=(12,5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100
+    plt.subplot(231)
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,0],label =r"$q_{0}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,1],label =r"$q_{1}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, q[:,2],label =r"$q_{2}$")
@@ -271,7 +330,8 @@ def env_test():
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(232)
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,0],label =r"$q_{0}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,1],label =r"$q_{1}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, qe[:,2],label =r"$q_{2}$")
@@ -283,7 +343,23 @@ def env_test():
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(simulation_iterations-1)])
+    angle = angle.reshape([-1,3])
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(233)
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,0],label = r"$\phi$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,1],label = r"$\theta$")
+    plt.plot(np.arange(simulation_iterations-1)*dt, angle[:,2],label = r"$\psi$")
+    # plt.title('Action')
+    plt.ylabel('angle [deg]')
+    plt.xlabel(r'time [s]')
+    plt.legend(loc="lower center", bbox_to_anchor=(0.5,1.05), ncol=3)
+    plt.tight_layout()
+    # plt.ylim(-20, 20)
+    plt.grid(True, color='k', linestyle='dotted', linewidth=0.8)
+
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(234)
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,0],label =r"$\omega_{x}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,1],label =r"$\omega_{y}$")
     plt.plot(np.arange(simulation_iterations-1)*dt, w[:,2],label =r"$\omega_{z}$")
@@ -294,7 +370,8 @@ def env_test():
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_angle.png")
 
-    plt.figure(figsize=(5.0,3.5),dpi=100)
+    # plt.figure(figsize=(5.0,3.5),dpi=100)
+    plt.subplot(235)
     plt.plot(np.arange(simulation_iterations)*dt, actions[:,0],label = r"$\tau_{x}$")
     plt.plot(np.arange(simulation_iterations)*dt, actions[:,1],label = r"$\tau_{x}$")
     plt.plot(np.arange(simulation_iterations)*dt, actions[:,2],label = r"$\tau_{x}$")
@@ -310,12 +387,14 @@ def env_test():
 
 if __name__ == '__main__':
     plt.close()
-    val = input('Enter the number 1:train 2:evaluate 3:env_test  > ')
+    val = input('Enter the number 1:train 2:evaluate 3:env_test 4:pd_tune > ')
     if val == '1':
         train()
     elif val == '2':
         evaluate()
     elif val == '3':
         env_test()
+    elif val == '4':
+        pd_tune()
     else:
         print("You entered the wrong number, run again and choose from 1 or 2 or 3.")

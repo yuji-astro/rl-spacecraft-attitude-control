@@ -48,11 +48,11 @@ def train():
     critic_lr = config.critic_lr
     actor_lr = config.actor_lr
 
-    # agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
-                    # policy_freq, policy_noise, noise_clip)
+    agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
+                    policy_freq, policy_noise, noise_clip)
     # wandb.watch([agent.critic,agent.actor], log="all")
-    curr_dir = os.path.abspath(os.getcwd())
-    agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
+    # curr_dir = os.path.abspath(os.getcwd())
+    # agent = torch.load(curr_dir + "/models/spacecraft_control_ddpg.pkl")
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     episode_rewards = mini_batch_train(env, agent, max_episodes, max_steps, batch_size)
 
@@ -68,62 +68,6 @@ def train():
         os.mkdir("models")
     torch.save(agent, curr_dir + "/models/spacecraft_control_ddpg.pkl")
 
-def train():
-    # simulation of the agent solving the spacecraft attitude control problem
-    env = make("SatelliteContinuous")
-    #logger
-    wandb.init(project='Para-Tune-RL-PD',
-        config={
-        "batch_size": 128,
-        "critic_lr": 1e-3,
-        "actor_lr": 1e-4,
-        "max_episodes": 10000,
-        "max_steps": 300,
-        "gamma": 0.99,
-        "tau" : 1e-3,
-        "buffer_maxlen": 100000,
-        "policy_noise": 0.2,
-        "policy_freq": 2,
-        "noise_clip": 0.5,
-        "prioritized_on": False,
-        "State": 'angle:4, ang_rate:4, ang_vel:3',}
-    )
-    config = wandb.config
-
-    max_episodes = config.max_episodes
-    max_steps = config.max_steps
-    batch_size = config.batch_size
-
-    policy_noise = config.policy_noise
-    policy_freq = config.policy_freq
-    noise_clip = config.noise_clip
-
-    gamma = config.gamma
-    buffer_maxlen = config.buffer_maxlen
-    tau = config.tau
-    critic_lr = config.critic_lr
-    actor_lr = config.actor_lr
-
-    agent = TD3Agent(env, gamma, tau, buffer_maxlen, critic_lr, actor_lr, True, max_episodes * max_steps,
-                    policy_freq, policy_noise, noise_clip)
-    # wandb.watch([agent.critic,agent.actor], log="all")
-    # curr_dir = os.path.abspath(os.getcwd())
-    # agent = torch.load(curr_dir + "/models/pd_tune.pkl")
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    episode_rewards = mini_batch_train_pd(env, agent, max_episodes, max_steps, batch_size)
-
-    plt.figure()
-    plt.plot(episode_rewards)
-    plt.xlabel("Episodes")
-    plt.ylabel("Reward")
-	# plt.show()
-    # plt.savefig(curr_dir + "/results/plot_reward_hist.png")
-
-    curr_dir = os.path.abspath(os.getcwd())
-    if not os.path.isdir("models"):
-        os.mkdir("models")
-    torch.save(agent, curr_dir + "/models/pd_tune.pkl")
-
 def evaluate():
     # simulation of the agent solving the cartpole swing-up problem
     env = make("SatelliteContinuous")
@@ -137,7 +81,7 @@ def evaluate():
     agent.train = False
 
     state = env.reset()
-    print('The goal angle :'+ str(env.goalEuler))
+    print('The goal angle :'+ str(env.goalEuler) + " the target multi:" + str(env.multi))
     r = 0
     qe = np.empty((0,4))
     q = np.empty((0,4))
@@ -145,7 +89,7 @@ def evaluate():
     actions = np.empty((0,3))
 
     dt = 0.1
-    simutime = 30
+    simutime = 50
     simulation_iterations = int(simutime/dt) -1 # dt is 0.01
 
     for i in range(1, simulation_iterations):
@@ -265,6 +209,7 @@ def env_test():
 
     curr_dir = os.path.abspath(os.getcwd())
     env.reset()
+    print('The goal angle :'+ str(env.goalEuler) + " the target multi:" + str(env.multi))
     r = 0
     qe = np.empty((0,4))
     q = np.empty((0,4))
@@ -283,7 +228,7 @@ def env_test():
     actions = np.append(actions, action,axis=0)
 
     dt = 0.1
-    simutime = 30
+    simutime = 50
     simulation_iterations = int(simutime/dt) -1 # dt is 0.01
 
     for i in range(1, simulation_iterations):
@@ -387,14 +332,12 @@ def env_test():
 
 if __name__ == '__main__':
     plt.close()
-    val = input('Enter the number 1:train 2:evaluate 3:env_test 4:pd_tune > ')
+    val = input('Enter the number 1:train 2:evaluate 3:env_test > ')
     if val == '1':
         train()
     elif val == '2':
         evaluate()
     elif val == '3':
         env_test()
-    elif val == '4':
-        pd_tune()
     else:
         print("You entered the wrong number, run again and choose from 1 or 2 or 3.")

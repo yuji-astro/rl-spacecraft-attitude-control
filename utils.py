@@ -16,14 +16,10 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
     episode_rewards = []
     counter = 0
     try:
-        # with tqdm(range(max_episodes),leave=False) as pbar:
-        #     for episode, ch in enumerate(pbar):
-        #         pbar.set_description("[Train] Episode %d" % episode)
         for episode in range(max_episodes):
             state = env.reset()
             episode_reward = 0    
             for step in range(max_steps):
-                # pbar.set_postfix(OrderedDict(goal= env.goalEuler, steps = step))#OrderedDict(loss=1-episode/5, acc=episode/10))
                 action = agent.get_action(state, (episode + 1) * (step + 1))
                 next_error_state, reward, done, next_state, _ = env.step(action)
                 agent.replay_buffer.push(state, action, reward, next_error_state, done)
@@ -43,9 +39,6 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
                     break
 
                 state = next_error_state
-                # Early stopping, if cumulative rewards of 10 consecutive games were >-55
-                # if counter == 10:
-                    # break
     except KeyboardInterrupt:
         print('Training stopped manually!!!')
         pass

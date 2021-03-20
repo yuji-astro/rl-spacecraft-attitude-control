@@ -166,6 +166,10 @@ class SatelliteContinuousEnv(gym.Env):
         self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
 
         #---thresholds for episode-----
+        self.q_weight = 1*2
+        self.w_weight = 1
+        self.action_weight = 0.25
+
         self.nsteps = 0  # timestep
         self.max_steps = self.simutime/self.dt
 
@@ -178,18 +182,7 @@ class SatelliteContinuousEnv(gym.Env):
         action_bound = np.array([self.max_torque, self.max_torque, self.max_torque],dtype=np.float32)
 
         # 状態量（姿勢角４・姿勢角微分４・角速度３）
-        high = np.array([
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,],dtype=np.float32)
+        high = np.ones(11,dtype = np.float32)*np.finfo(np.float32).max
 
         self.action_space = spaces.Box(-action_bound, action_bound)
         self.observation_space = spaces.Box(-high, high)
@@ -264,8 +257,10 @@ class SatelliteContinuousEnv(gym.Env):
         # 報酬関数
         #--------REWARD---------
         if not done:
-            # reward = -0.05*action@action
-            reward = -(2*(1-qe_new[0])**2 + 4*qe_new[1:]@qe_new[1:] + 2*omega_new@omega_new + action@action) 
+            self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
+            self.r2 = self.w_weight*omega_new@omega_new
+            self.r3 = self.action_weight*action@action
+            reward = -(self.r1 + self.r2 + self.r3) 
             # if qe_new[0] >= self.angle_thre:
             #     reward = -0.5*action@action
             #     reward += np.array([1,-1,-1,-1])@np.power(qe,2)
@@ -278,7 +273,10 @@ class SatelliteContinuousEnv(gym.Env):
         elif self.steps_beyond_done is None:
             # epsiode just ended
             self.steps_beyond_done = 0
-            reward = -(2*(1-qe_new[0])**2 + 4*qe_new[1:]@qe_new[1:] + 2*omega_new@omega_new + action@action) 
+            self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
+            self.r2 = self.w_weight*omega_new@omega_new
+            self.r3 = self.action_weight*action@action
+            reward = -(self.r1 + self.r2 + self.r3) 
 
             # if qe_new[0] >= self.angle_thre:
             #     reward = np.array([-1,-1,-1,1])@np.power(qe,2)

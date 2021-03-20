@@ -204,18 +204,11 @@ class SatelliteContinuousEnv(gym.Env):
         action = np.clip(action, -self.max_torque, self.max_torque)
 
         pre_state = self.pre_state
-        # q, omega = pre_state
         q = pre_state[:4]
         omega = pre_state[-3:]
         
         state = self.state
         qe = state[:4]
-
-        #ステートアップデート（オイラー法）
-        # q_dot = self.quaternion_differential(omega, q)
-        # omega_dot = self.omega_differential(omega,self.inertia_inv,action)
-        # q = q + q_dot * self.dt
-        # omega = omega + omega_dot * self.dt
 
         #ステートアップデート（runge-kutta 法）
         k1 = self.omega_differential(omega,self.inertia_inv,self.inertia,action)
@@ -236,12 +229,6 @@ class SatelliteContinuousEnv(gym.Env):
 
         self.pre_state = np.hstack((q_new, omega_new))
         self.state = np.hstack((qe_new, qe_dot_new, omega_new))
-
-        # self.pre_state = [q_new, omega_new]
-        # self.state = [qe_new, qe_dot_new, omega_new]
-
-        # とりまdoneはfalseにしておく
-        # done = False
 
         #ステップ数を更新
         self.nsteps += 1
@@ -333,8 +320,6 @@ class SatelliteContinuousEnv(gym.Env):
         self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
         self.pre_state = np.hstack((self.startQuate,self.startOmega))
         self.state = np.hstack((self.errorQuate,self.d_errorQuate, self.startOmega))
-        # self.pre_state = [self.startQuate,self.startOmega]
-        # self.state = [self.errorQuate,self.d_errorQuate, self.startOmega]
 
         obs = self.state
         # タイムスタンプをリセット

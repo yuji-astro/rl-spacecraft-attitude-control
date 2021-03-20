@@ -99,9 +99,9 @@ class Actor(nn.Module):
     def forward(self, obs):
         x = F.relu(self.linear1(obs))
         x = F.relu(self.linear2(x))
-        # output of tanh is bounded between -1 and 1
+        # output of tanh is bounded between -0.5 and 0.5
         # multiply by maximum action (here: 10N) in order to scale the action appropriately
-        x = torch.tanh(self.linear3(x))
+        x = torch.tanh(self.linear3(x))*self.max_action
         return x
 
 
@@ -120,7 +120,7 @@ class TD3Agent:
         self.tau = tau
         self.train = train  # set to true if we want to train the agent, set to false to simulate agent
         self.decay = decay
-        self.max_action = 1
+        self.max_action = 0.5
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
 

@@ -166,9 +166,9 @@ class SatelliteContinuousEnv(gym.Env):
         self.d_errorQuate = self.quaternion_differential(self.startOmega, self.errorQuate)
 
         #---thresholds for episode-----
-        self.q_weight = 1*2
-        self.w_weight = 1
-        self.action_weight = 0.25
+        self.q_weight = 1*10
+        self.w_weight = 0#1
+        self.action_weight = 0#0.25
 
         self.nsteps = 0  # timestep
         self.max_steps = self.simutime/self.dt

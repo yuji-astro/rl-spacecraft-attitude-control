@@ -220,9 +220,9 @@ class SatelliteContinuousEnv(gym.Env):
         #ステートアップデート（runge-kutta 法）
         k1 = self.omega_differential(omega,self.inertia_inv,self.inertia,action)
         k2 = self.omega_differential(omega + 0.5*self.dt*k1, self.inertia_inv,self.inertia,action)
-        k3 = self.omega_differential(omega + 0.5*self.dt*k2, self.i            if qe_new[0] >= self.angle_thre:
-                reward = -0.5*action@action
-                reward += np.array([1,-1,-1,-1])@np.power(qe,2)
+        k3 = self.omega_differential(omega + 0.5*self.dt*k2, self.inertia_inv,self.inertia,action)
+        k4 = self.omega_differential(omega + self.dt*k3, self.inertia_inv,self.inertia,action)
+
         l1 = self.quaternion_differential(omega, q) 
         l2 = self.quaternion_differential(omega + 0.5*self.dt*k1, q + 0.5*self.dt*l1)
         l3 = self.quaternion_differential(omega + 0.5*self.dt*k2, q + 0.5*self.dt*l2)
@@ -256,7 +256,7 @@ class SatelliteContinuousEnv(gym.Env):
             self.r3 = self.action_weight*action@action
             reward = -(self.r1 + self.r2 + self.r3) 
             if qe_new[0] >= self.angle_thre:
-                # reward = -0.5*action@action
+                reward = -0.2*action@action
                 reward += np.array([1,-1,-1,-1])@np.power(qe_new,2)
             # else:
             #     if qe_new[0] > qe[0]:

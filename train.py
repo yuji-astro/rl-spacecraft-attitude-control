@@ -115,25 +115,32 @@ def evaluate():
     q = q.reshape([-1,4])
     qe = qe.reshape([-1,4])
     w = w.reshape([-1,3])
-    # angle = [e for i in]
-
+    
     # plot the angle and action curve
     #-------------------plot settings------------------------------
     plt.rcParams['font.family'] = 'Times New Roman' # font familyの設定
     plt.rcParams['mathtext.fontset'] = 'stix' # math fontの設定
-    plt.rcParams["font.size"] = 15 # 全体のフォントサイズが変更されます。
-    plt.rcParams['xtick.labelsize'] = 15 # 軸だけ変更されます。
-    plt.rcParams['ytick.labelsize'] = 15 # 軸だけ変更されます 
+    plt.rcParams["font.size"] = 10 # 全体のフォントサイズが変更されます。
+    plt.rcParams['xtick.labelsize'] = 10 # 軸だけ変更されます。
+    plt.rcParams['ytick.labelsize'] = 10 # 軸だけ変更されます 
     plt.rcParams['xtick.direction'] = 'in' # x axis in
     plt.rcParams['ytick.direction'] = 'in' # y axis in 
     plt.rcParams['axes.linewidth'] = 1.0 # axis line width
     plt.rcParams['axes.grid'] = True # make grid
+    plt.rcParams["legend.loc"] = "best"         # 凡例の位置、"best"でいい感じのところ
+    plt.rcParams["legend.frameon"] = True       # 凡例を囲うかどうか、Trueで囲う、Falseで囲わない
+    plt.rcParams["legend.framealpha"] = 1.0     # 透過度、0.0から1.0の値を入れる
+    plt.rcParams["legend.facecolor"] = "white"  # 背景色
+    # plt.rcParams["legend.edgecolor"] = "black"  # 囲いの色
+    plt.rcParams["legend.fancybox"] = True     # Trueにすると囲いの四隅が丸くなる
     #--------------------------------------------------------------  
     curr_dir = os.path.abspath(os.getcwd())
     if not os.path.isdir("results"):
         os.mkdir("results")
     
     plt.figure(figsize=(12,5),dpi=100)
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=0.3, hspace=0.3)
     # plt.figure(figsize=(5.0,3.5),dpi=100)
     plt.subplot(231)
     plt.plot(np.arange(max_steps)*dt, q[:,0],label =r"$q_{0}$")
@@ -144,6 +151,7 @@ def evaluate():
     plt.ylabel('quaternion value')
     plt.xlabel(r'time [s]')
     plt.legend()
+    plt.tight_layout()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_quaternion.png")
 
@@ -157,6 +165,7 @@ def evaluate():
     plt.ylabel('quaternion value')
     plt.xlabel(r'time [s]')
     plt.legend()
+    plt.tight_layout()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_error_quaternion.png")
 
@@ -187,6 +196,7 @@ def evaluate():
     plt.ylabel('angular velocity [rad/s]')
     plt.xlabel(r'time [s]')
     plt.legend()
+    plt.tight_layout()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_ang_vel.png")
 
@@ -199,6 +209,7 @@ def evaluate():
     plt.ylabel('Input torque [Nm]')
     plt.xlabel(r'time [s]')
     plt.legend()
+    plt.tight_layout()
     plt.grid(color='k', linestyle='dotted', linewidth=0.6)
     # plt.savefig(curr_dir + "/results/plot_torque.png")
     plt.savefig(curr_dir + "/results/total_results.png")
@@ -223,9 +234,6 @@ def env_test():
 
     # simulation of the agent solving the cartpole swing-up problem
     env = make("SatelliteContinuous")
-    # uncomment for recording a video of simulation
-    # env = wrappers.Monitor(env, './video', force=True)
-
     curr_dir = os.path.abspath(os.getcwd())
     env.reset()
     print('The goal angle :'+ str(env.goalEuler) + " the target multi:" + str(env.multi))

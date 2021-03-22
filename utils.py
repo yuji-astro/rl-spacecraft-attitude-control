@@ -3,6 +3,7 @@ from gym import make as gym_make
 from tqdm import tqdm
 from collections import OrderedDict
 import wandb
+import numpy as np
 
 
 def make(env_name, *make_args, **make_kwargs):
@@ -30,10 +31,15 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
                     agent.update(batch_size)
 
                 if done or step == max_steps - 1:
+                    angle = np.array(np.rad2deg(env.dcm2euler(env.quaternion2dcm(next_error_state[:4]))).tolist())
+                    angle = angle.reshape([-1,3])
                     episode_rewards.append(episode_reward)
                     wandb.log({ "episode reward": episode_reward,
                                 "critic_loss": agent.critic_loss_for_log,
-                                "actor_loss": agent.actor_loss_for_log})
+                                "actor_loss": agent.actor_loss_for_log,
+                                "final roll angle": angle[0],
+                                "final pitch angle": angle[1],
+                                "final yaw angle": angle[2],})
                     # Count number of consecutive games with cumulative rewards >-55 for early stopping
                     print("\nEpisode " + str(episode) + " total reward : " + str(episode_reward))
                     break

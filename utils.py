@@ -32,7 +32,6 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
 
                 if done or step == max_steps - 1:
                     angle = np.array(np.rad2deg(env.dcm2euler(env.quaternion2dcm(next_error_state[:4]))).tolist())
-                    angle = angle.reshape([-1,3])
                     episode_rewards.append(episode_reward)
                     wandb.log({ "episode reward": episode_reward,
                                 "critic_loss": agent.critic_loss_for_log,

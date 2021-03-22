@@ -260,9 +260,9 @@ class SatelliteContinuousEnv(gym.Env):
                 reward += np.array([1,-1,-1,-1])@np.power(qe_new,2)
             else:
                 if qe_new[0] > qe[0]:
-                    reward += 0.1
+                    reward = 0.1
                 else:
-                    reward += -0.1
+                    reward = -0.1
         
         elif self.steps_beyond_done is None:
             # epsiode just ended

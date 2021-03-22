@@ -138,9 +138,9 @@ class SatelliteContinuousEnv(gym.Env):
         self.simutime = 30
 
         #慣性パラメータ
-        self.inertia = np.array([[0.5, 0.0, 0.0], 
-                    [0.0, 0.7, 0.0], 
-                    [0.0, 0.0, 1.0]])
+        self.inertia = np.array([[3, 0.0, 0.0], 
+                    [0.0, 3, 0.0], 
+                    [0.0, 0.0, 2]])
         self.multi = np.random.randint(100,1000)/100
         self.inertia = self.multi * self.inertia
         self.inertia_inv = np.linalg.inv(self.inertia)

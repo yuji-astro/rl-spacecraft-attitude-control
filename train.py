@@ -103,12 +103,13 @@ def evaluate():
         w=np.append(w,next_error_state[8:11].reshape(1,-1),axis=0)
         r += reward
         actions = np.append(actions, action.reshape(1,-1),axis=0)
-        r_hist = np.append(r_hist, np.array([-env.r1,-env.r2,-env.r3]).reshape(1,-1),axis=0)
+        # r_hist = np.append(r_hist, np.array([-env.r1,-env.r2,-env.r3]).reshape(1,-1),axis=0)
 
         state = next_error_state
 
     env.close()
     #-------------------------------結果のプロット----------------------------------
+    #region
     #show the total reward
     print("Total Reward is : " + str(r))
     # データの形の整理
@@ -172,7 +173,6 @@ def evaluate():
     angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(max_steps)])
     angle = angle.reshape([-1,3])
     print(angle[-1,:])
-    print(q[-1,:])
     # plt.figure(figsize=(5.0,3.5),dpi=100)
     plt.subplot(233)
     plt.plot(np.arange(max_steps)*dt, angle[:,0],label = r"$\phi$")
@@ -214,21 +214,22 @@ def evaluate():
     # plt.savefig(curr_dir + "/results/plot_torque.png")
     plt.savefig(curr_dir + "/results/total_results.png")
 
-    plt.figure(figsize=(8,4),dpi=100)
-    plt.plot(np.arange(max_steps)*dt, r_hist[:,0],label = r"$q$ pnlty")
-    plt.plot(np.arange(max_steps)*dt, r_hist[:,1],label = r"$\omega$ pnlty")
-    plt.plot(np.arange(max_steps)*dt, r_hist[:,2],label = r"$\tau$ pnlty")
-    plt.plot(np.arange(max_steps)*dt, r_hist[:,0]+r_hist[:,1]+r_hist[:,2],label = r"$toal$",linestyle='dotted')
-    # plt.title('Action')
-    plt.ylabel('reward')
-    plt.xlabel(r'time [s]')
-    plt.tight_layout()
-    plt.legend()
-    # plt.ylim(-20, 20)
-    plt.grid(True, color='k', linestyle='dotted', linewidth=0.8)
-    plt.savefig(curr_dir + "/results/reward_compo.png")
+    # plt.figure(figsize=(8,4),dpi=100)
+    # plt.plot(np.arange(max_steps)*dt, r_hist[:,0],label = r"$q$ pnlty")
+    # plt.plot(np.arange(max_steps)*dt, r_hist[:,1],label = r"$\omega$ pnlty")
+    # plt.plot(np.arange(max_steps)*dt, r_hist[:,2],label = r"$\tau$ pnlty")
+    # plt.plot(np.arange(max_steps)*dt, r_hist[:,0]+r_hist[:,1]+r_hist[:,2],label = r"$toal$",linestyle='dotted')
+    # # plt.title('Action')
+    # plt.ylabel('reward')
+    # plt.xlabel(r'time [s]')
+    # plt.tight_layout()
+    # plt.legend()
+    # # plt.ylim(-20, 20)
+    # plt.grid(True, color='k', linestyle='dotted', linewidth=0.8)
+    # plt.savefig(curr_dir + "/results/reward_compo.png")
 
     plt.show()
+    #endregion
     # -------------------------結果プロット終わり--------------------------------
 def env_test():
 

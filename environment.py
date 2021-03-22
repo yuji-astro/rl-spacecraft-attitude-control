@@ -272,7 +272,7 @@ class SatelliteContinuousEnv(gym.Env):
             # self.r3 = self.action_weight*action@action
             # reward = -(self.r1 + self.r2 + self.r3) 
             if qe_new[0] >= self.angle_thre:
-                reward = np.array([-1,-1,-1,1])@np.power(qe_new,2)
+                reward = np.array([1,-1,-1,-1])@np.power(qe_new,2)
             else:
                 if qe_new[0] > qe[0]:
                     reward = 0.1
@@ -291,7 +291,7 @@ class SatelliteContinuousEnv(gym.Env):
         self.inertia = np.array([[0.5, 0.0, 0.0], 
                     [0.0, 0.7, 0.0], 
                     [0.0, 0.0, 1.0]])
-        self.multi = 1#np.random.randint(100,1000)/100
+        self.multi = np.random.randint(100,1000)/100
         self.inertia = self.multi * self.inertia
         self.inertia_inv = np.linalg.inv(self.inertia)
         # 初期状態 角度(deg)　角速度(rad/s)

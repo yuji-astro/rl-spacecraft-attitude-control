@@ -251,34 +251,33 @@ class SatelliteContinuousEnv(gym.Env):
         # 報酬関数
         #--------REWARD---------
         if not done:
-            self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
-            self.r2 = self.w_weight*omega_new@omega_new
-            self.r3 = self.action_weight*action@action
-            reward = -(self.r1 + self.r2 + self.r3) 
+            # self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
+            # self.r2 = self.w_weight*omega_new@omega_new
+            # self.r3 = self.action_weight*action@action
+            # reward = -(self.r1 + self.r2 + self.r3) 
             if qe_new[0] >= self.angle_thre:
                 reward = -0.2*action@action
                 reward += np.array([1,-1,-1,-1])@np.power(qe_new,2)
-            # else:
-            #     if qe_new[0] > qe[0]:
-            #         reward += 0.1
-            #     else:
-            #         reward += -0.1
+            else:
+                if qe_new[0] > qe[0]:
+                    reward += 0.1
+                else:
+                    reward += -0.1
         
         elif self.steps_beyond_done is None:
             # epsiode just ended
             self.steps_beyond_done = 0
-            self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
-            self.r2 = self.w_weight*omega_new@omega_new
-            self.r3 = self.action_weight*action@action
-            reward = -(self.r1 + self.r2 + self.r3) 
-
-            # if qe_new[0] >= self.angle_thre:
-            #     reward = np.array([-1,-1,-1,1])@np.power(qe,2)
-            # else:
-            #     if qe_new[0] > qe[0]:
-            #         reward = 0.1
-            #     else:
-            #         reward = -0.1
+            # self.r1 = self.q_weight*((1-qe_new[0])**2+ qe_new[1:]@qe_new[1:])
+            # self.r2 = self.w_weight*omega_new@omega_new
+            # self.r3 = self.action_weight*action@action
+            # reward = -(self.r1 + self.r2 + self.r3) 
+            if qe_new[0] >= self.angle_thre:
+                reward = np.array([-1,-1,-1,1])@np.power(qe_new,2)
+            else:
+                if qe_new[0] > qe[0]:
+                    reward = 0.1
+                else:
+                    reward = -0.1
 
         else:
             if self.steps_beyond_done == 0:

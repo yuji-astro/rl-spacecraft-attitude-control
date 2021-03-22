@@ -90,7 +90,7 @@ def evaluate():
     r_hist = np.empty((0,3))    
 
     dt = 0.1
-    simutime = 50
+    simutime = 30
     max_steps = int(simutime/dt) # dt is 0.1
 
     for i in range(max_steps):
@@ -103,7 +103,7 @@ def evaluate():
         w=np.append(w,next_error_state[8:11].reshape(1,-1),axis=0)
         r += reward
         actions = np.append(actions, action.reshape(1,-1),axis=0)
-        r_hist = np.append(r_hist, np.array([env.r1,env.r2,env.r3]).reshape(1,-1),axis=0)
+        r_hist = np.append(r_hist, np.array([-env.r1,-env.r2,-env.r3]).reshape(1,-1),axis=0)
 
         state = next_error_state
 
@@ -162,6 +162,8 @@ def evaluate():
 
     angle = np.array([np.rad2deg(env.dcm2euler(env.quaternion2dcm(q[i,:]))).tolist() for i in range(max_steps)])
     angle = angle.reshape([-1,3])
+    print(angle[-1,:])
+    print(q[-1,:])
     # plt.figure(figsize=(5.0,3.5),dpi=100)
     plt.subplot(233)
     plt.plot(np.arange(max_steps)*dt, angle[:,0],label = r"$\phi$")

@@ -53,7 +53,7 @@ class SatelliteContinuousEnv(gym.Env):
             phi = np.arctan2(dcm[1,2], dcm[2,2])
             psi = np.arctan2(dcm[0,1], dcm[0,0])
             
-        euler = np.array([psi, theta, phi])
+        euler = np.array([phi, theta, psi])
         return euler
 
     def dcm2quaternion(self,dcm):
@@ -95,15 +95,24 @@ class SatelliteContinuousEnv(gym.Env):
     # calculate DCM from quaternion
     def quaternion2dcm(self,q):
         dcm = np.zeros((3,3), dtype=float)
-        #q = [q0,q1,q2,q3] version
+        # #q = [q0,q1,q2,q3] version
+        # dcm[0,0] = q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]
+        # dcm[0,1] = 2 * (q[2]*q[1] - q[3]*q[0])
+        # dcm[0,2] = 2 * (q[3]*q[1] + q[2]*q[0])
+        # dcm[1,0] = 2 * (q[1]*q[2] + q[3]*q[0])
+        # dcm[1,1] = q[2]*q[2] - q[3]*q[3] - q[1]*q[1] + q[0]*q[0]
+        # dcm[1,2] = 2 * (q[3]*q[2] - q[1]*q[0])
+        # dcm[2,0] = 2 * (q[1]*q[3] - q[2]*q[0])
+        # dcm[2,1] = 2 * (q[2]*q[3] + q[1]*q[0])
+        # dcm[2,2] = - q[2]*q[2] - q[1]*q[1] + q[0]*q[0] + q[3]*q[3]
         dcm[0,0] = q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]
-        dcm[0,1] = 2 * (q[2]*q[1] - q[3]*q[0])
-        dcm[0,2] = 2 * (q[3]*q[1] + q[2]*q[0])
-        dcm[1,0] = 2 * (q[1]*q[2] + q[3]*q[0])
+        dcm[1,0] = 2 * (q[2]*q[1] - q[3]*q[0])
+        dcm[2,0] = 2 * (q[3]*q[1] + q[2]*q[0])
+        dcm[0,1] = 2 * (q[1]*q[2] + q[3]*q[0])
         dcm[1,1] = q[2]*q[2] - q[3]*q[3] - q[1]*q[1] + q[0]*q[0]
-        dcm[1,2] = 2 * (q[3]*q[2] - q[1]*q[0])
-        dcm[2,0] = 2 * (q[1]*q[3] - q[2]*q[0])
-        dcm[2,1] = 2 * (q[2]*q[3] + q[1]*q[0])
+        dcm[2,1] = 2 * (q[3]*q[2] - q[1]*q[0])
+        dcm[0,2] = 2 * (q[1]*q[3] - q[2]*q[0])
+        dcm[1,2] = 2 * (q[2]*q[3] + q[1]*q[0])
         dcm[2,2] = - q[2]*q[2] - q[1]*q[1] + q[0]*q[0] + q[3]*q[3]
         return dcm
     
@@ -188,8 +197,6 @@ class SatelliteContinuousEnv(gym.Env):
         self.observation_space = spaces.Box(-high, high)
         self.pre_state = np.hstack((self.startQuate,self.startOmega))
         self.state = np.hstack((self.errorQuate,self.d_errorQuate, self.startOmega))
-        # self.pre_state = [self.startQuate,self.startOmega]
-        # self.state = [self.errorQuate,self.d_errorQuate, self.startOmega]
 
         self.seed()
         self.viewer = None
@@ -301,8 +308,6 @@ class SatelliteContinuousEnv(gym.Env):
         # while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
         #     self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
         self.goalQuate = self.dcm2quaternion(self.euler2dcm(self.goalEuler))
-
-        self.errorQuate = self.error_Q@self.startQuate
 
         #エラークオータニオンマトリックス
         er1 = self.goalQuate[0]

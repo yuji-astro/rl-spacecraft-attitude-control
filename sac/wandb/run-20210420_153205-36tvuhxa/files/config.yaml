@@ -1,0 +1,59 @@
+wandb_version: 1
+
+State:
+  desc: null
+  value: angle:4, ang_rate:4, ang_vel:3
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.10.17
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.6.9
+    t:
+      1:
+      - 1
+      2:
+      - 1
+      4: 3.6.9
+      5: 0.10.17
+actor_lr:
+  desc: null
+  value: 0.0001
+alpha:
+  desc: null
+  value: 0.2
+alpha_lr:
+  desc: null
+  value: 0.0003
+batch_size:
+  desc: null
+  value: 128
+buffer_maxlen:
+  desc: null
+  value: 100000
+critic_lr:
+  desc: null
+  value: 0.001
+gamma:
+  desc: null
+  value: 0.99
+max_episodes:
+  desc: null
+  value: 10000
+max_steps:
+  desc: null
+  value: 300
+policy_type:
+  desc: null
+  value: Gaussian
+self_entropy_tuning:
+  desc: null
+  value: true
+target_update_interval:
+  desc: null
+  value: 2
+tau:
+  desc: null
+  value: 0.001
